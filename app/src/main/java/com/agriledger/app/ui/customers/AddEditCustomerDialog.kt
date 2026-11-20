@@ -6,6 +6,7 @@ import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
+import androidx.compose.foundation.layout.imePadding
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.rememberScrollState
@@ -13,10 +14,10 @@ import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.automirrored.filled.Notes
+import androidx.compose.material.icons.filled.Call
 import androidx.compose.material.icons.filled.LocationOn
-import androidx.compose.material.icons.filled.Notes
 import androidx.compose.material.icons.filled.Person
-import androidx.compose.material.icons.filled.Phone
 import androidx.compose.material.icons.filled.SquareFoot
 import androidx.compose.material3.Card
 import androidx.compose.material3.CardDefaults
@@ -35,6 +36,7 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.window.Dialog
+import androidx.compose.ui.window.DialogProperties
 import com.agriledger.app.data.model.Customer
 import com.agriledger.app.ui.components.AgriLedgerFormField
 import com.agriledger.app.ui.components.AgriLedgerPrimaryButton
@@ -57,11 +59,15 @@ fun AddEditCustomerDialog(
     var nameError by remember { mutableStateOf(false) }
     var phoneError by remember { mutableStateOf(false) }
 
-    Dialog(onDismissRequest = onDismiss) {
+    Dialog(
+        onDismissRequest = onDismiss,
+        properties = DialogProperties(usePlatformDefaultWidth = false)
+    ) {
         Card(
             modifier = Modifier
-                .fillMaxWidth()
-                .padding(vertical = 16.dp),
+                .fillMaxWidth(0.92f)
+                .padding(vertical = 16.dp)
+                .imePadding(),
             shape = RoundedCornerShape(24.dp),
             colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surface),
             elevation = CardDefaults.cardElevation(defaultElevation = 6.dp)
@@ -95,8 +101,8 @@ fun AddEditCustomerDialog(
                         name = it
                         nameError = false
                     },
-                    label = "Farmer / Customer Name *",
-                    placeholder = "e.g. Sardar Gurpreet Singh",
+                    label = "Full Name *",
+                    placeholder = "e.g. Harpreet Singh Sandhu",
                     leadingIcon = {
                         Icon(Icons.Default.Person, contentDescription = null, tint = PrimaryForest)
                     },
@@ -113,10 +119,10 @@ fun AddEditCustomerDialog(
                         phone = it
                         phoneError = false
                     },
-                    label = "Phone Number *",
+                    label = "Mobile Number *",
                     placeholder = "e.g. 9876543210",
                     leadingIcon = {
-                        Icon(Icons.Default.Phone, contentDescription = null, tint = PrimaryForest)
+                        Icon(Icons.Default.Call, contentDescription = null, tint = PrimaryForest)
                     },
                     keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Phone),
                     isError = phoneError,
@@ -125,7 +131,7 @@ fun AddEditCustomerDialog(
 
                 Spacer(modifier = Modifier.height(14.dp))
 
-                // Village Field
+                // Village / Location
                 AgriLedgerFormField(
                     value = village,
                     onValueChange = { village = it },
@@ -141,7 +147,12 @@ fun AddEditCustomerDialog(
                 // Land Area (Acres)
                 AgriLedgerFormField(
                     value = acresText,
-                    onValueChange = { acresText = it },
+                    onValueChange = { input ->
+                        val sanitized = input.replace(',', '.')
+                        if (sanitized.isEmpty() || sanitized.matches(Regex("^\\d*\\.?\\d*$"))) {
+                            acresText = sanitized
+                        }
+                    },
                     label = "Total Farm Area (Optional)",
                     placeholder = "e.g. 15.5",
                     suffix = { Text("Acres") },
@@ -160,7 +171,7 @@ fun AddEditCustomerDialog(
                     label = "Notes / Preferences",
                     placeholder = "e.g. Prefers UPI, wheat grower",
                     leadingIcon = {
-                        Icon(Icons.Default.Notes, contentDescription = null, tint = PrimaryForest)
+                        Icon(Icons.AutoMirrored.Filled.Notes, contentDescription = null, tint = PrimaryForest)
                     },
                     singleLine = false,
                     maxLines = 3
@@ -198,14 +209,8 @@ fun AddEditCustomerDialog(
                             }
 
                             if (!hasError) {
-                                val acres = acresText.toDoubleOrNull() ?: 0.0
-                                val customer = customerToEdit?.copy(
-                                    name = name.trim(),
-                                    phone = phone.trim(),
-                                    village = village.trim(),
-                                    totalLandAcres = acres,
-                                    notes = notes.trim()
-                                ) ?: Customer(
+                                val acres = acresText.trim().replace(',', '.').toDoubleOrNull() ?: 0.0
+                                val customer = (customerToEdit ?: Customer(name = "", phone = "")).copy(
                                     name = name.trim(),
                                     phone = phone.trim(),
                                     village = village.trim(),

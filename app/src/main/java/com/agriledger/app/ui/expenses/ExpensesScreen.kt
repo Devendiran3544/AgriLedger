@@ -27,6 +27,7 @@ import androidx.compose.ui.graphics.Color
 import com.agriledger.app.ui.theme.AccentGreenLight
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Add
+import androidx.compose.material.icons.filled.Calculate
 import androidx.compose.material.icons.filled.Delete
 import androidx.compose.material.icons.filled.LocalGasStation
 import androidx.compose.material.icons.filled.ReceiptLong
@@ -209,7 +210,44 @@ fun ExpensesScreen(
                 modifier = Modifier.padding(horizontal = 20.dp, vertical = 4.dp)
             )
 
-            Spacer(modifier = Modifier.height(8.dp))
+            // Direct shortcut to Multi-Item Calculator
+            Row(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .padding(horizontal = 20.dp, vertical = 2.dp),
+                horizontalArrangement = Arrangement.SpaceBetween,
+                verticalAlignment = Alignment.CenterVertically
+            ) {
+                Text(
+                    text = "RECORDED EXPENSES (${expenses.size})",
+                    style = MaterialTheme.typography.labelSmall.copy(
+                        fontWeight = FontWeight.Bold,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant,
+                        letterSpacing = 1.sp
+                    )
+                )
+                TextButton(
+                    onClick = { selectedScreenTab = 1 },
+                    contentPadding = PaddingValues(horizontal = 6.dp, vertical = 0.dp)
+                ) {
+                    Icon(
+                        imageVector = Icons.Default.Calculate,
+                        contentDescription = null,
+                        tint = PrimaryForest,
+                        modifier = Modifier.size(16.dp)
+                    )
+                    Spacer(modifier = Modifier.width(4.dp))
+                    Text(
+                        text = "Open Calculator",
+                        style = MaterialTheme.typography.labelMedium.copy(
+                            fontWeight = FontWeight.Bold,
+                            color = PrimaryForest
+                        )
+                    )
+                }
+            }
+
+            Spacer(modifier = Modifier.height(4.dp))
 
             if (expenses.isEmpty()) {
                 EmptyStateView(

@@ -58,10 +58,16 @@ fun AgriLedgerNavHost(
         composable(
             route = Screen.CustomerDetail.route,
             arguments = listOf(
-                navArgument("customerId") { type = NavType.LongType }
+                navArgument("customerId") {
+                    type = NavType.LongType
+                    defaultValue = 0L
+                }
             )
         ) { backStackEntry ->
-            val customerId = backStackEntry.arguments?.getLong("customerId") ?: 0L
+            val customerId = backStackEntry.arguments?.getLong("customerId")
+                ?.takeIf { it > 0L }
+                ?: backStackEntry.arguments?.getString("customerId")?.toLongOrNull()
+                ?: 0L
             CustomerDetailScreen(
                 customerId = customerId,
                 viewModel = customerViewModel,

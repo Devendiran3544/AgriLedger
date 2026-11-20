@@ -6,6 +6,7 @@ import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
+import androidx.compose.foundation.layout.imePadding
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.rememberScrollState
@@ -13,7 +14,6 @@ import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.filled.CreditCard
 import androidx.compose.material.icons.filled.Notes
 import androidx.compose.material.icons.filled.Payments
 import androidx.compose.material.icons.filled.Person
@@ -40,11 +40,13 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.window.Dialog
+import androidx.compose.ui.window.DialogProperties
 import com.agriledger.app.data.model.Customer
 import com.agriledger.app.data.model.Payment
 import com.agriledger.app.data.model.PaymentMode
 import com.agriledger.app.ui.components.AgriLedgerFormField
 import com.agriledger.app.ui.components.AgriLedgerPrimaryButton
+import com.agriledger.app.ui.theme.ErrorCrimson
 import com.agriledger.app.ui.theme.PrimaryForest
 
 @OptIn(ExperimentalMaterial3Api::class)
@@ -73,12 +75,17 @@ fun RecordPaymentDialog(
 
     var customerError by remember { mutableStateOf(false) }
     var amountError by remember { mutableStateOf(false) }
+    var amountErrorMessage by remember { mutableStateOf("Valid amount is required") }
 
-    Dialog(onDismissRequest = onDismiss) {
+    Dialog(
+        onDismissRequest = onDismiss,
+        properties = DialogProperties(usePlatformDefaultWidth = false)
+    ) {
         Card(
             modifier = Modifier
-                .fillMaxWidth()
-                .padding(vertical = 16.dp),
+                .fillMaxWidth(0.92f)
+                .padding(vertical = 16.dp)
+                .imePadding(),
             shape = RoundedCornerShape(24.dp),
             colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surface),
             elevation = CardDefaults.cardElevation(defaultElevation = 6.dp)
@@ -105,9 +112,9 @@ fun RecordPaymentDialog(
 
                 Spacer(modifier = Modifier.height(18.dp))
 
-                // Customer Dropdown
+                // Customer Selection Dropdown
                 Text(
-                    text = "Customer *",
+                    text = "Customer / Farmer *",
                     style = MaterialTheme.typography.labelMedium.copy(
                         fontWeight = FontWeight.SemiBold,
                         color = MaterialTheme.colorScheme.onSurface
@@ -118,16 +125,17 @@ fun RecordPaymentDialog(
                     expanded = customerDropdownExpanded,
                     onExpandedChange = { customerDropdownExpanded = !customerDropdownExpanded }
                 ) {
-                    val currentCustomer = customers.find { it.id == selectedCustomerId }
+                    val selectedCust = customers.find { it.id == selectedCustomerId }
                     OutlinedTextField(
-                        value = currentCustomer?.let { "${it.name} (${it.village})" } ?: "Select Customer",
+                        value = selectedCust?.let { "${it.name} (${it.village})" } ?: "Select Customer",
                         onValueChange = {},
                         readOnly = true,
                         trailingIcon = { ExposedDropdownMenuDefaults.TrailingIcon(expanded = customerDropdownExpanded) },
                         leadingIcon = { Icon(Icons.Default.Person, contentDescription = null, tint = PrimaryForest) },
                         shape = RoundedCornerShape(14.dp),
+                        isError = customerError,
                         colors = OutlinedTextFieldDefaults.colors(
-                            focusedBorderColor = PrimaryForest,
+                            focusedBorderColor = MaterialTheme.colorScheme.primary,
                             unfocusedBorderColor = MaterialTheme.colorScheme.outline
                         ),
                         modifier = Modifier
@@ -151,23 +159,33 @@ fun RecordPaymentDialog(
                         }
                     }
                 }
+                if (customerError) {
+                    Spacer(modifier = Modifier.height(4.dp))
+                    Text(
+                        text = "Please select a customer",
+                        style = MaterialTheme.typography.labelSmall.copy(color = ErrorCrimson)
+                    )
+                }
 
                 Spacer(modifier = Modifier.height(14.dp))
 
                 // Amount Field
                 AgriLedgerFormField(
                     value = amountText,
-                    onValueChange = {
-                        amountText = it
-                        amountError = false
+                    onValueChange = { input ->
+                        val sanitized = input.replace(',', '.')
+                        if (sanitized.isEmpty() || sanitized.matches(Regex("^\\d*\\.?\\d*$"))) {
+                            amountText = sanitized
+                            amountError = false
+                        }
                     },
                     label = "Amount Received *",
                     placeholder = "e.g. 5000",
                     prefix = { Text(currencySymbol) },
                     leadingIcon = { Icon(Icons.Default.Payments, contentDescription = null, tint = PrimaryForest) },
-                    keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number),
+                    keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Decimal),
                     isError = amountError,
-                    errorMessage = "Valid amount is required"
+                    errorMessage = amountErrorMessage
                 )
 
                 Spacer(modifier = Modifier.height(14.dp))
@@ -190,10 +208,9 @@ fun RecordPaymentDialog(
                         onValueChange = {},
                         readOnly = true,
                         trailingIcon = { ExposedDropdownMenuDefaults.TrailingIcon(expanded = modeDropdownExpanded) },
-                        leadingIcon = { Icon(Icons.Default.CreditCard, contentDescription = null, tint = PrimaryForest) },
                         shape = RoundedCornerShape(14.dp),
                         colors = OutlinedTextFieldDefaults.colors(
-                            focusedBorderColor = PrimaryForest,
+                            focusedBorderColor = MaterialTheme.colorScheme.primary,
                             unfocusedBorderColor = MaterialTheme.colorScheme.outline
                         ),
                         modifier = Modifier
@@ -219,12 +236,12 @@ fun RecordPaymentDialog(
 
                 Spacer(modifier = Modifier.height(14.dp))
 
-                // Reference / Receipt Number
+                // Reference / UTR Number
                 AgriLedgerFormField(
                     value = referenceNumber,
                     onValueChange = { referenceNumber = it },
-                    label = "Reference / UTR / Receipt No.",
-                    placeholder = "e.g. UPI-91823901 or REC-105"
+                    label = "Ref / UTR / Check No. (Optional)",
+                    placeholder = "e.g. UPI-921893128"
                 )
 
                 Spacer(modifier = Modifier.height(14.dp))
@@ -233,8 +250,8 @@ fun RecordPaymentDialog(
                 AgriLedgerFormField(
                     value = notes,
                     onValueChange = { notes = it },
-                    label = "Payment Notes",
-                    placeholder = "e.g. Harvest settlement partial payment",
+                    label = "Notes",
+                    placeholder = "e.g. Paid in cash at mandi",
                     leadingIcon = { Icon(Icons.Default.Notes, contentDescription = null, tint = PrimaryForest) },
                     singleLine = false,
                     maxLines = 2
@@ -262,20 +279,25 @@ fun RecordPaymentDialog(
                         text = "Save Payment",
                         onClick = {
                             var hasError = false
-                            val amount = amountText.toDoubleOrNull() ?: 0.0
+                            val cleanAmount = amountText.trim().replace(',', '.').toDoubleOrNull()
                             if (selectedCustomerId <= 0L) {
                                 customerError = true
                                 hasError = true
                             }
-                            if (amount <= 0.0) {
+                            if (amountText.isBlank()) {
                                 amountError = true
+                                amountErrorMessage = "Amount is required"
+                                hasError = true
+                            } else if (cleanAmount == null || cleanAmount <= 0.0) {
+                                amountError = true
+                                amountErrorMessage = "Amount must be greater than 0"
                                 hasError = true
                             }
 
-                            if (!hasError) {
+                            if (!hasError && cleanAmount != null) {
                                 val payment = Payment(
                                     customerId = selectedCustomerId,
-                                    amount = amount,
+                                    amount = cleanAmount,
                                     paymentMode = selectedPaymentMode,
                                     referenceNumber = referenceNumber.trim(),
                                     notes = notes.trim()

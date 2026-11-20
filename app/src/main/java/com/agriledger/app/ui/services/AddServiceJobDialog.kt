@@ -8,7 +8,9 @@ import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
+import androidx.compose.foundation.layout.imePadding
 import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.RoundedCornerShape
@@ -40,11 +42,12 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
-import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.ui.unit.dp
+import androidx.compose.ui.unit.sp
 import androidx.compose.ui.window.Dialog
+import androidx.compose.ui.window.DialogProperties
 import com.agriledger.app.data.model.Customer
 import com.agriledger.app.data.model.PaymentStatus
 import com.agriledger.app.data.model.ServiceJob
@@ -52,6 +55,7 @@ import com.agriledger.app.data.model.ServiceType
 import com.agriledger.app.ui.components.AgriLedgerFormField
 import com.agriledger.app.ui.components.AgriLedgerPrimaryButton
 import com.agriledger.app.ui.theme.AccentGreenLight
+import com.agriledger.app.ui.theme.ErrorCrimson
 import com.agriledger.app.ui.theme.PrimaryForest
 import com.agriledger.app.utils.Formatters
 
@@ -77,19 +81,24 @@ fun AddServiceJobDialog(
     var amountPaidText by remember { mutableStateOf("0") }
     var notes by remember { mutableStateOf("") }
 
-    val acres = acresText.toDoubleOrNull() ?: 0.0
-    val rate = rateText.toDoubleOrNull() ?: 0.0
+    val acres = acresText.trim().replace(',', '.').toDoubleOrNull() ?: 0.0
+    val rate = rateText.trim().replace(',', '.').toDoubleOrNull() ?: 0.0
     val totalAmount = acres * rate
-    val amountPaid = amountPaidText.toDoubleOrNull() ?: 0.0
+    val amountPaid = amountPaidText.trim().replace(',', '.').toDoubleOrNull() ?: 0.0
 
     var customerError by remember { mutableStateOf(false) }
     var acresError by remember { mutableStateOf(false) }
+    var rateError by remember { mutableStateOf(false) }
 
-    Dialog(onDismissRequest = onDismiss) {
+    Dialog(
+        onDismissRequest = onDismiss,
+        properties = DialogProperties(usePlatformDefaultWidth = false)
+    ) {
         Card(
             modifier = Modifier
-                .fillMaxWidth()
-                .padding(vertical = 16.dp),
+                .fillMaxWidth(0.92f)
+                .padding(vertical = 16.dp)
+                .imePadding(),
             shape = RoundedCornerShape(24.dp),
             colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surface),
             elevation = CardDefaults.cardElevation(defaultElevation = 6.dp)
@@ -118,7 +127,7 @@ fun AddServiceJobDialog(
 
                 // Customer Dropdown
                 Text(
-                    text = "Customer *",
+                    text = "Customer / Farmer *",
                     style = MaterialTheme.typography.labelMedium.copy(
                         fontWeight = FontWeight.SemiBold,
                         color = MaterialTheme.colorScheme.onSurface
@@ -129,16 +138,17 @@ fun AddServiceJobDialog(
                     expanded = customerDropdownExpanded,
                     onExpandedChange = { customerDropdownExpanded = !customerDropdownExpanded }
                 ) {
-                    val currentCustomer = customers.find { it.id == selectedCustomerId }
+                    val selectedCust = customers.find { it.id == selectedCustomerId }
                     OutlinedTextField(
-                        value = currentCustomer?.let { "${it.name} (${it.village})" } ?: "Select Customer",
+                        value = selectedCust?.let { "${it.name} (${it.village})" } ?: "Select Customer",
                         onValueChange = {},
                         readOnly = true,
                         trailingIcon = { ExposedDropdownMenuDefaults.TrailingIcon(expanded = customerDropdownExpanded) },
                         leadingIcon = { Icon(Icons.Default.Person, contentDescription = null, tint = PrimaryForest) },
                         shape = RoundedCornerShape(14.dp),
+                        isError = customerError,
                         colors = OutlinedTextFieldDefaults.colors(
-                            focusedBorderColor = PrimaryForest,
+                            focusedBorderColor = MaterialTheme.colorScheme.primary,
                             unfocusedBorderColor = MaterialTheme.colorScheme.outline
                         ),
                         modifier = Modifier
@@ -161,6 +171,13 @@ fun AddServiceJobDialog(
                             )
                         }
                     }
+                }
+                if (customerError) {
+                    Spacer(modifier = Modifier.height(4.dp))
+                    Text(
+                        text = "Please select a customer",
+                        style = MaterialTheme.typography.labelSmall.copy(color = ErrorCrimson)
+                    )
                 }
 
                 Spacer(modifier = Modifier.height(14.dp))
@@ -186,7 +203,7 @@ fun AddServiceJobDialog(
                         leadingIcon = { Icon(Icons.Default.Agriculture, contentDescription = null, tint = PrimaryForest) },
                         shape = RoundedCornerShape(14.dp),
                         colors = OutlinedTextFieldDefaults.colors(
-                            focusedBorderColor = PrimaryForest,
+                            focusedBorderColor = MaterialTheme.colorScheme.primary,
                             unfocusedBorderColor = MaterialTheme.colorScheme.outline
                         ),
                         modifier = Modifier
@@ -198,12 +215,12 @@ fun AddServiceJobDialog(
                         expanded = serviceDropdownExpanded,
                         onDismissRequest = { serviceDropdownExpanded = false }
                     ) {
-                        ServiceType.entries.forEach { st ->
+                        ServiceType.entries.forEach { type ->
                             DropdownMenuItem(
-                                text = { Text(st.displayName) },
+                                text = { Text("${type.displayName} (Std: $currencySymbol${type.defaultRatePerAcre.toInt()}/Ac)") },
                                 onClick = {
-                                    selectedServiceType = st
-                                    rateText = st.defaultRatePerAcre.toInt().toString()
+                                    selectedServiceType = type
+                                    rateText = type.defaultRatePerAcre.toInt().toString()
                                     serviceDropdownExpanded = false
                                 }
                             )
@@ -213,33 +230,44 @@ fun AddServiceJobDialog(
 
                 Spacer(modifier = Modifier.height(14.dp))
 
-                // Acres & Rate Row
+                // Acres and Rate Row
                 Row(
                     modifier = Modifier.fillMaxWidth(),
-                    horizontalArrangement = Arrangement.spacedBy(12.dp)
+                    horizontalArrangement = Arrangement.spacedBy(10.dp)
                 ) {
                     AgriLedgerFormField(
                         value = acresText,
-                        onValueChange = {
-                            acresText = it
-                            acresError = false
+                        onValueChange = { input ->
+                            val sanitized = input.replace(',', '.')
+                            if (sanitized.isEmpty() || sanitized.matches(Regex("^\\d*\\.?\\d*$"))) {
+                                acresText = sanitized
+                                acresError = false
+                            }
                         },
                         label = "Area (Acres) *",
                         placeholder = "10",
                         leadingIcon = { Icon(Icons.Default.SquareFoot, contentDescription = null, tint = PrimaryForest) },
                         keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Decimal),
                         isError = acresError,
-                        errorMessage = "Required",
+                        errorMessage = "Required (> 0)",
                         modifier = Modifier.weight(1f)
                     )
 
                     AgriLedgerFormField(
                         value = rateText,
-                        onValueChange = { rateText = it },
+                        onValueChange = { input ->
+                            val sanitized = input.replace(',', '.')
+                            if (sanitized.isEmpty() || sanitized.matches(Regex("^\\d*\\.?\\d*$"))) {
+                                rateText = sanitized
+                                rateError = false
+                            }
+                        },
                         label = "Rate / Acre *",
                         placeholder = "2500",
                         prefix = { Text(currencySymbol) },
-                        keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number),
+                        keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Decimal),
+                        isError = rateError,
+                        errorMessage = "Required (> 0)",
                         modifier = Modifier.weight(1f)
                     )
                 }
@@ -290,12 +318,17 @@ fun AddServiceJobDialog(
                 // Initial Amount Paid (Optional Advance)
                 AgriLedgerFormField(
                     value = amountPaidText,
-                    onValueChange = { amountPaidText = it },
+                    onValueChange = { input ->
+                        val sanitized = input.replace(',', '.')
+                        if (sanitized.isEmpty() || sanitized.matches(Regex("^\\d*\\.?\\d*$"))) {
+                            amountPaidText = sanitized
+                        }
+                    },
                     label = "Advance / Initial Payment Received",
                     placeholder = "0",
                     prefix = { Text(currencySymbol) },
                     leadingIcon = { Icon(Icons.Default.Payments, contentDescription = null, tint = PrimaryForest) },
-                    keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number)
+                    keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Decimal)
                 )
 
                 Spacer(modifier = Modifier.height(14.dp))
@@ -339,6 +372,10 @@ fun AddServiceJobDialog(
                             }
                             if (acres <= 0.0) {
                                 acresError = true
+                                hasError = true
+                            }
+                            if (rate <= 0.0) {
+                                rateError = true
                                 hasError = true
                             }
 

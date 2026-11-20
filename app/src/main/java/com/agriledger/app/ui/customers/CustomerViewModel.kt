@@ -8,6 +8,7 @@ import com.agriledger.app.data.model.CustomerWithSummary
 import com.agriledger.app.data.model.Payment
 import com.agriledger.app.data.model.ServiceJob
 import com.agriledger.app.data.repository.AgriLedgerRepository
+import kotlinx.coroutines.ExperimentalCoroutinesApi
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.SharingStarted
 import kotlinx.coroutines.flow.StateFlow
@@ -18,6 +19,17 @@ import kotlinx.coroutines.flow.flowOf
 import kotlinx.coroutines.flow.stateIn
 import kotlinx.coroutines.launch
 
+sealed interface CustomerDetailUiState {
+    data object Loading : CustomerDetailUiState
+    data class Success(
+        val customer: Customer,
+        val jobs: List<ServiceJob>,
+        val payments: List<Payment>
+    ) : CustomerDetailUiState
+    data class Error(val message: String) : CustomerDetailUiState
+}
+
+@OptIn(ExperimentalCoroutinesApi::class)
 class CustomerViewModel(private val repository: AgriLedgerRepository) : ViewModel() {
 
     private val _searchQuery = MutableStateFlow("")
@@ -49,6 +61,40 @@ class CustomerViewModel(private val repository: AgriLedgerRepository) : ViewMode
             matchesQuery && matchesFilter
         }
     }.stateIn(viewModelScope, SharingStarted.WhileSubscribed(5000), emptyList())
+
+    // Active Customer Detail State
+    private val _selectedCustomerId = MutableStateFlow<Long?>(null)
+
+    val customerDetailState: StateFlow<CustomerDetailUiState> = _selectedCustomerId
+        .flatMapLatest { id ->
+            if (id == null || id <= 0L) {
+                flowOf(CustomerDetailUiState.Error("Invalid or missing customer ID"))
+            } else {
+                combine(
+                    repository.getCustomerByIdFlow(id),
+                    repository.getJobsForCustomer(id),
+                    repository.getPaymentsForCustomer(id)
+                ) { customer, jobs, payments ->
+                    if (customer == null) {
+                        CustomerDetailUiState.Error("Customer not found or was removed from ledger.")
+                    } else {
+                        CustomerDetailUiState.Success(
+                            customer = customer,
+                            jobs = jobs,
+                            payments = payments
+                        )
+                    }
+                }
+            }
+        }.stateIn(
+            scope = viewModelScope,
+            started = SharingStarted.WhileSubscribed(5000),
+            initialValue = CustomerDetailUiState.Loading
+        )
+
+    fun loadCustomer(customerId: Long) {
+        _selectedCustomerId.value = customerId
+    }
 
     fun onSearchQueryChange(query: String) {
         _searchQuery.value = query
@@ -93,7 +139,7 @@ class CustomerViewModel(private val repository: AgriLedgerRepository) : ViewMode
         }
     }
 
-    // Customer Detail Screen Helpers
+    // Customer Detail Screen Helpers (backward-compatible)
     fun getCustomerById(customerId: Long): StateFlow<Customer?> {
         return repository.getCustomerByIdFlow(customerId)
             .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5000), null)

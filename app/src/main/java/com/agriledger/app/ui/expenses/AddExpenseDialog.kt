@@ -6,6 +6,7 @@ import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
+import androidx.compose.foundation.layout.imePadding
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.rememberScrollState
@@ -40,6 +41,7 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.window.Dialog
+import androidx.compose.ui.window.DialogProperties
 import com.agriledger.app.data.model.Expense
 import com.agriledger.app.data.model.ExpenseCategory
 import com.agriledger.app.ui.components.AgriLedgerFormField
@@ -63,12 +65,17 @@ fun AddExpenseDialog(
 
     var titleError by remember { mutableStateOf(false) }
     var amountError by remember { mutableStateOf(false) }
+    var amountErrorMessage by remember { mutableStateOf("Valid amount is required") }
 
-    Dialog(onDismissRequest = onDismiss) {
+    Dialog(
+        onDismissRequest = onDismiss,
+        properties = DialogProperties(usePlatformDefaultWidth = false)
+    ) {
         Card(
             modifier = Modifier
-                .fillMaxWidth()
-                .padding(vertical = 16.dp),
+                .fillMaxWidth(0.92f)
+                .padding(vertical = 16.dp)
+                .imePadding(),
             shape = RoundedCornerShape(24.dp),
             colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surface),
             elevation = CardDefaults.cardElevation(defaultElevation = 6.dp)
@@ -116,7 +123,7 @@ fun AddExpenseDialog(
                         leadingIcon = { Icon(Icons.Default.Category, contentDescription = null, tint = PrimaryForest) },
                         shape = RoundedCornerShape(14.dp),
                         colors = OutlinedTextFieldDefaults.colors(
-                            focusedBorderColor = PrimaryForest,
+                            focusedBorderColor = MaterialTheme.colorScheme.primary,
                             unfocusedBorderColor = MaterialTheme.colorScheme.outline
                         ),
                         modifier = Modifier
@@ -161,17 +168,20 @@ fun AddExpenseDialog(
                 // Amount Field
                 AgriLedgerFormField(
                     value = amountText,
-                    onValueChange = {
-                        amountText = it
-                        amountError = false
+                    onValueChange = { input ->
+                        val sanitized = input.replace(',', '.')
+                        if (sanitized.isEmpty() || sanitized.matches(Regex("^\\d*\\.?\\d*$"))) {
+                            amountText = sanitized
+                            amountError = false
+                        }
                     },
                     label = "Amount *",
                     placeholder = "e.g. 9500",
                     prefix = { Text(currencySymbol) },
                     leadingIcon = { Icon(Icons.Default.Payments, contentDescription = null, tint = PrimaryForest) },
-                    keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number),
+                    keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Decimal),
                     isError = amountError,
-                    errorMessage = "Valid amount is required"
+                    errorMessage = amountErrorMessage
                 )
 
                 Spacer(modifier = Modifier.height(14.dp))
@@ -219,20 +229,25 @@ fun AddExpenseDialog(
                         text = "Save Expense",
                         onClick = {
                             var hasError = false
-                            val amount = amountText.toDoubleOrNull() ?: 0.0
+                            val cleanAmount = amountText.trim().replace(',', '.').toDoubleOrNull()
                             if (title.isBlank()) {
                                 titleError = true
                                 hasError = true
                             }
-                            if (amount <= 0.0) {
+                            if (amountText.isBlank()) {
                                 amountError = true
+                                amountErrorMessage = "Amount is required"
+                                hasError = true
+                            } else if (cleanAmount == null || cleanAmount <= 0.0) {
+                                amountError = true
+                                amountErrorMessage = "Amount must be greater than 0"
                                 hasError = true
                             }
 
-                            if (!hasError) {
+                            if (!hasError && cleanAmount != null) {
                                 val expense = Expense(
                                     category = selectedCategory,
-                                    amount = amount,
+                                    amount = cleanAmount,
                                     title = title.trim(),
                                     receiptNumber = receiptNumber.trim(),
                                     notes = notes.trim()

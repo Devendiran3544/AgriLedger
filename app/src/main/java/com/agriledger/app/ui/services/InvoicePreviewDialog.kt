@@ -51,6 +51,8 @@ import com.agriledger.app.ui.theme.PrimaryForest
 import com.agriledger.app.utils.Formatters
 import com.agriledger.app.utils.PdfReceiptGenerator
 
+import androidx.compose.ui.window.DialogProperties
+
 @Composable
 fun InvoicePreviewDialog(
     job: ServiceJob,
@@ -61,10 +63,13 @@ fun InvoicePreviewDialog(
     val context = LocalContext.current
     val currency = businessProfile.currencySymbol
 
-    Dialog(onDismissRequest = onDismiss) {
+    Dialog(
+        onDismissRequest = onDismiss,
+        properties = DialogProperties(usePlatformDefaultWidth = false)
+    ) {
         Card(
             modifier = Modifier
-                .fillMaxWidth()
+                .fillMaxWidth(0.94f)
                 .padding(vertical = 16.dp),
             shape = RoundedCornerShape(24.dp),
             colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surface),
