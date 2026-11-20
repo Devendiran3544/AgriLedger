@@ -41,6 +41,9 @@ android {
     buildFeatures {
         compose = true
     }
+    testOptions {
+        unitTests.isReturnDefaultValues = true
+    }
     packaging {
         resources {
             excludes += "/META-INF/{AL2.0,LGPL2.1}"
@@ -75,6 +78,7 @@ dependencies {
 
     // Testing
     testImplementation(libs.junit)
+    testImplementation("org.json:json:20240303")
     testImplementation("org.jetbrains.kotlinx:kotlinx-coroutines-test:1.9.0")
     testImplementation("androidx.room:room-testing:2.6.1")
     androidTestImplementation(libs.androidx.junit)
