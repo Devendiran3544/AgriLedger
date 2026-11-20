@@ -68,8 +68,6 @@ fun AgriLedgerFormField(
                 focusedBorderColor = MaterialTheme.colorScheme.primary,
                 unfocusedBorderColor = MaterialTheme.colorScheme.outline,
                 errorBorderColor = ErrorCrimson,
-                focusedErrorBorderColor = ErrorCrimson,
-                unfocusedErrorBorderColor = ErrorCrimson,
                 errorLabelColor = ErrorCrimson,
                 errorSupportingTextColor = ErrorCrimson,
                 focusedContainerColor = MaterialTheme.colorScheme.surface,
