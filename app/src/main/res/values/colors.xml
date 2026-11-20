@@ -1,0 +1,19 @@
+<resources>
+    <color name="primary_forest">#174D38</color>
+    <color name="primary_forest_variant">#236B4C</color>
+    <color name="accent_green">#58B368</color>
+    <color name="bg_light">#F6F8F5</color>
+    <color name="surface_light">#FFFFFF</color>
+    <color name="text_dark">#17231C</color>
+    <color name="text_secondary">#748078</color>
+    <color name="warning">#F0B44D</color>
+    <color name="error">#D9534F</color>
+    <color name="success">#3B9C67</color>
+
+    <!-- Dark Mode Colors -->
+    <color name="bg_dark">#101A14</color>
+    <color name="surface_dark">#17241D</color>
+    <color name="surface_variant_dark">#203128</color>
+    <color name="text_light">#F0F5F2</color>
+    <color name="text_secondary_dark">#9EB0A4</color>
+</resources>

@@ -1,0 +1,13 @@
+<resources>
+    <!-- Base application theme for dark mode. -->
+    <style name="Theme.AgriLedger" parent="android:Theme.Material.NoActionBar">
+        <item name="android:statusBarColor">@color/bg_dark</item>
+        <item name="android:navigationBarColor">@color/bg_dark</item>
+        <item name="android:windowLightStatusBar">false</item>
+        <item name="android:windowLightNavigationBar">false</item>
+    </style>
+
+    <style name="Theme.AgriLedger.Splash" parent="Theme.AgriLedger">
+        <item name="android:windowBackground">@color/bg_dark</item>
+    </style>
+</resources>
