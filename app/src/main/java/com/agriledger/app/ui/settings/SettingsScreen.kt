@@ -20,6 +20,8 @@ import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Business
 import androidx.compose.material.icons.filled.CleaningServices
+import androidx.compose.material.icons.filled.CloudDownload
+import androidx.compose.material.icons.filled.CloudUpload
 import androidx.compose.material.icons.filled.CurrencyRupee
 import androidx.compose.material.icons.filled.Dataset
 import androidx.compose.material.icons.filled.Eco
@@ -37,6 +39,7 @@ import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.OutlinedButton
+import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
@@ -63,6 +66,8 @@ import com.agriledger.app.ui.theme.AccentGreen
 import com.agriledger.app.ui.theme.AccentGreenLight
 import com.agriledger.app.ui.theme.ErrorCrimson
 import com.agriledger.app.ui.theme.ErrorCrimsonBg
+import com.agriledger.app.ui.theme.InfoBlue
+import com.agriledger.app.ui.theme.InfoBlueBg
 import com.agriledger.app.ui.theme.PrimaryForest
 
 @Composable
@@ -81,6 +86,8 @@ fun SettingsScreen(
     var invoicePrefix by remember(profile) { mutableStateOf(profile.invoicePrefix) }
 
     var showClearConfirmDialog by remember { mutableStateOf(false) }
+    var showRestoreDialog by remember { mutableStateOf(false) }
+    var restoreJsonText by remember { mutableStateOf("") }
 
     Scaffold(
         topBar = {
@@ -263,6 +270,64 @@ fun SettingsScreen(
                 }
             }
 
+            // Complete JSON Backup & Restore Card
+            item {
+                AgriLedgerCard(
+                    modifier = Modifier.fillMaxWidth(),
+                    cornerRadius = 20.dp
+                ) {
+                    Text(
+                        text = "Backup & Restore (JSON)",
+                        style = MaterialTheme.typography.titleMedium.copy(fontWeight = FontWeight.Bold)
+                    )
+                    Text(
+                        text = "Safeguard customer records, service bills, payments, expenses, and settings offline.",
+                        style = MaterialTheme.typography.bodySmall.copy(
+                            color = MaterialTheme.colorScheme.onSurfaceVariant
+                        )
+                    )
+
+                    Spacer(modifier = Modifier.height(14.dp))
+
+                    Row(
+                        modifier = Modifier.fillMaxWidth(),
+                        horizontalArrangement = Arrangement.spacedBy(10.dp)
+                    ) {
+                        Button(
+                            onClick = {
+                                viewModel.exportBackup(context) {
+                                    Toast.makeText(context, "Backup exported", Toast.LENGTH_SHORT).show()
+                                }
+                            },
+                            modifier = Modifier
+                                .weight(1f)
+                                .height(48.dp),
+                            shape = RoundedCornerShape(14.dp),
+                            colors = ButtonDefaults.buttonColors(containerColor = PrimaryForest)
+                        ) {
+                            Icon(Icons.Default.CloudUpload, contentDescription = null, modifier = Modifier.size(18.dp))
+                            Spacer(modifier = Modifier.width(6.dp))
+                            Text("Export Backup", fontWeight = FontWeight.Bold)
+                        }
+
+                        OutlinedButton(
+                            onClick = {
+                                restoreJsonText = ""
+                                showRestoreDialog = true
+                            },
+                            modifier = Modifier
+                                .weight(1f)
+                                .height(48.dp),
+                            shape = RoundedCornerShape(14.dp)
+                        ) {
+                            Icon(Icons.Default.CloudDownload, contentDescription = null, modifier = Modifier.size(18.dp))
+                            Spacer(modifier = Modifier.width(6.dp))
+                            Text("Restore", fontWeight = FontWeight.Bold)
+                        }
+                    }
+                }
+            }
+
             // Quick Data Management (Demo Data Seeder & Database Cleaner)
             item {
                 AgriLedgerCard(
@@ -338,6 +403,56 @@ fun SettingsScreen(
                 Spacer(modifier = Modifier.height(60.dp))
             }
         }
+    }
+
+    if (showRestoreDialog) {
+        AlertDialog(
+            onDismissRequest = { showRestoreDialog = false },
+            title = { Text("Restore Database Backup") },
+            text = {
+                Column {
+                    Text(
+                        text = "Paste your AgriLedger JSON backup text below. This will restore all customers, service invoices, payments, expenses, and settings.",
+                        style = MaterialTheme.typography.bodySmall.copy(color = MaterialTheme.colorScheme.onSurfaceVariant)
+                    )
+                    Spacer(modifier = Modifier.height(10.dp))
+                    OutlinedTextField(
+                        value = restoreJsonText,
+                        onValueChange = { restoreJsonText = it },
+                        placeholder = { Text("Paste JSON backup here...") },
+                        maxLines = 8,
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .height(160.dp),
+                        shape = RoundedCornerShape(12.dp)
+                    )
+                }
+            },
+            confirmButton = {
+                Button(
+                    onClick = {
+                        if (restoreJsonText.isNotBlank()) {
+                            viewModel.restoreBackup(restoreJsonText.trim()) { success, errorMsg ->
+                                if (success) {
+                                    showRestoreDialog = false
+                                    Toast.makeText(context, "Backup restored successfully!", Toast.LENGTH_LONG).show()
+                                } else {
+                                    Toast.makeText(context, "Restore failed: $errorMsg", Toast.LENGTH_LONG).show()
+                                }
+                            }
+                        }
+                    },
+                    colors = ButtonDefaults.buttonColors(containerColor = PrimaryForest)
+                ) {
+                    Text("Restore Database")
+                }
+            },
+            dismissButton = {
+                TextButton(onClick = { showRestoreDialog = false }) {
+                    Text("Cancel")
+                }
+            }
+        )
     }
 
     if (showClearConfirmDialog) {

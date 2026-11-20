@@ -17,12 +17,17 @@ import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.filled.PictureAsPdf
+import androidx.compose.material.icons.filled.Print
 import androidx.compose.material.icons.filled.Share
+import androidx.compose.material3.Button
+import androidx.compose.material3.ButtonDefaults
 import androidx.compose.material3.Card
 import androidx.compose.material3.CardDefaults
 import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
+import androidx.compose.material3.OutlinedButton
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
@@ -43,6 +48,7 @@ import com.agriledger.app.ui.components.StatusBadge
 import com.agriledger.app.ui.theme.AccentGreen
 import com.agriledger.app.ui.theme.PrimaryForest
 import com.agriledger.app.utils.Formatters
+import com.agriledger.app.utils.PdfReceiptGenerator
 
 @Composable
 fun InvoicePreviewDialog(
@@ -285,36 +291,89 @@ fun InvoicePreviewDialog(
 
                 Spacer(modifier = Modifier.height(24.dp))
 
-                // Actions
-                Row(
+                // Action Buttons: Print PDF, Share PDF, Share Text
+                Column(
                     modifier = Modifier.fillMaxWidth(),
-                    horizontalArrangement = Arrangement.SpaceBetween,
-                    verticalAlignment = Alignment.CenterVertically
+                    verticalArrangement = Arrangement.spacedBy(10.dp)
                 ) {
-                    TextButton(onClick = onDismiss) {
-                        Text("Close")
+                    Row(
+                        modifier = Modifier.fillMaxWidth(),
+                        horizontalArrangement = Arrangement.spacedBy(10.dp)
+                    ) {
+                        Button(
+                            onClick = {
+                                val pdfFile = PdfReceiptGenerator.generateInvoicePdf(
+                                    context = context,
+                                    job = job,
+                                    customer = customer,
+                                    profile = businessProfile
+                                )
+                                PdfReceiptGenerator.openOrSharePdf(context, pdfFile)
+                            },
+                            modifier = Modifier.weight(1f),
+                            shape = RoundedCornerShape(14.dp),
+                            colors = ButtonDefaults.buttonColors(containerColor = PrimaryForest)
+                        ) {
+                            Icon(Icons.Default.Print, contentDescription = null, modifier = Modifier.size(18.dp))
+                            Spacer(modifier = Modifier.width(6.dp))
+                            Text("Print / PDF", fontWeight = FontWeight.Bold)
+                        }
+
+                        Button(
+                            onClick = {
+                                val pdfFile = PdfReceiptGenerator.generateInvoicePdf(
+                                    context = context,
+                                    job = job,
+                                    customer = customer,
+                                    profile = businessProfile
+                                )
+                                PdfReceiptGenerator.sharePdfFile(
+                                    context = context,
+                                    file = pdfFile,
+                                    subject = "Invoice ${job.invoiceNumber} - ${customer.name}"
+                                )
+                            },
+                            modifier = Modifier.weight(1f),
+                            shape = RoundedCornerShape(14.dp),
+                            colors = ButtonDefaults.buttonColors(containerColor = AccentGreen)
+                        ) {
+                            Icon(Icons.Default.PictureAsPdf, contentDescription = null, modifier = Modifier.size(18.dp))
+                            Spacer(modifier = Modifier.width(6.dp))
+                            Text("Share PDF", fontWeight = FontWeight.Bold)
+                        }
                     }
 
-                    AgriLedgerPrimaryButton(
-                        text = "Share Bill",
-                        icon = Icons.Default.Share,
-                        onClick = {
-                            val shareText = Formatters.generateInvoiceShareText(
-                                job = job,
-                                customer = customer,
-                                businessName = businessProfile.businessName,
-                                currencySymbol = currency
-                            )
-                            val sendIntent = Intent().apply {
-                                action = Intent.ACTION_SEND
-                                putExtra(Intent.EXTRA_TEXT, shareText)
-                                type = "text/plain"
+                    Row(
+                        modifier = Modifier.fillMaxWidth(),
+                        horizontalArrangement = Arrangement.SpaceBetween,
+                        verticalAlignment = Alignment.CenterVertically
+                    ) {
+                        TextButton(onClick = onDismiss) {
+                            Text("Close")
+                        }
+
+                        TextButton(
+                            onClick = {
+                                val shareText = Formatters.generateInvoiceShareText(
+                                    job = job,
+                                    customer = customer,
+                                    businessName = businessProfile.businessName,
+                                    currencySymbol = currency
+                                )
+                                val sendIntent = Intent().apply {
+                                    action = Intent.ACTION_SEND
+                                    putExtra(Intent.EXTRA_TEXT, shareText)
+                                    type = "text/plain"
+                                }
+                                val shareIntent = Intent.createChooser(sendIntent, "Share Text Invoice")
+                                context.startActivity(shareIntent)
                             }
-                            val shareIntent = Intent.createChooser(sendIntent, "Share Invoice")
-                            context.startActivity(shareIntent)
-                        },
-                        modifier = Modifier.width(160.dp)
-                    )
+                        ) {
+                            Icon(Icons.Default.Share, contentDescription = null, modifier = Modifier.size(16.dp))
+                            Spacer(modifier = Modifier.width(4.dp))
+                            Text("Share Text Summary")
+                        }
+                    }
                 }
             }
         }

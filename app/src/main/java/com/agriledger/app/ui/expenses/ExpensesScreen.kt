@@ -16,7 +16,14 @@ import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.shape.CircleShape
-import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.material3.ScrollableTabRow
+import androidx.compose.material3.Tab
+import androidx.compose.material3.TabRow
+import androidx.compose.material3.TabRowDefaults
+import androidx.compose.material3.TabRowDefaults.tabIndicatorOffset
+import androidx.compose.runtime.mutableIntStateOf
+import androidx.compose.ui.graphics.Color
+import com.agriledger.app.ui.theme.AccentGreenLight
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Add
 import androidx.compose.material.icons.filled.Delete
@@ -65,6 +72,7 @@ fun ExpensesScreen(
     val currency = profile.currencySymbol
 
     var showAddExpenseDialog by remember { mutableStateOf(false) }
+    var selectedScreenTab by remember { mutableIntStateOf(0) } // 0 = Expense History, 1 = Multi-Item Calculator
 
     val filterOptions = remember {
         listOf("All") + ExpenseCategory.entries.map { it.displayName }
@@ -78,13 +86,15 @@ fun ExpensesScreen(
             )
         },
         floatingActionButton = {
-            FloatingActionButton(
-                onClick = { showAddExpenseDialog = true },
-                containerColor = ErrorCrimson,
-                contentColor = Color.White,
-                shape = RoundedCornerShape(18.dp)
-            ) {
-                Icon(Icons.Default.Add, contentDescription = "Add Expense")
+            if (selectedScreenTab == 0) {
+                FloatingActionButton(
+                    onClick = { showAddExpenseDialog = true },
+                    containerColor = ErrorCrimson,
+                    contentColor = Color.White,
+                    shape = RoundedCornerShape(18.dp)
+                ) {
+                    Icon(Icons.Default.Add, contentDescription = "Add Expense")
+                }
             }
         }
     ) { paddingValues ->
@@ -93,15 +103,60 @@ fun ExpensesScreen(
                 .fillMaxSize()
                 .padding(paddingValues)
         ) {
-            // Total Filtered Expense Card
-            Box(
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .padding(horizontal = 20.dp, vertical = 12.dp)
-                    .clip(RoundedCornerShape(20.dp))
-                    .background(ErrorCrimsonBg)
-                    .padding(18.dp)
+            // Mode Switcher Tabs
+            TabRow(
+                selectedTabIndex = selectedScreenTab,
+                containerColor = MaterialTheme.colorScheme.surface,
+                contentColor = PrimaryForest,
+                indicator = { tabPositions ->
+                    TabRowDefaults.SecondaryIndicator(
+                        Modifier.tabIndicatorOffset(tabPositions[selectedScreenTab]),
+                        color = PrimaryForest
+                    )
+                }
             ) {
+                Tab(
+                    selected = selectedScreenTab == 0,
+                    onClick = { selectedScreenTab = 0 },
+                    text = {
+                        Text(
+                            text = "Expense Ledger",
+                            fontWeight = if (selectedScreenTab == 0) FontWeight.Bold else FontWeight.Medium
+                        )
+                    }
+                )
+                Tab(
+                    selected = selectedScreenTab == 1,
+                    onClick = { selectedScreenTab = 1 },
+                    text = {
+                        Text(
+                            text = "Multi-Item Calculator",
+                            fontWeight = if (selectedScreenTab == 1) FontWeight.Bold else FontWeight.Medium
+                        )
+                    }
+                )
+            }
+
+            if (selectedScreenTab == 1) {
+                // Dedicated Multi-Item Expense Calculator
+                ExpenseCalculatorView(
+                    currencySymbol = currency,
+                    onSaveExpense = { exp ->
+                        viewModel.addExpense(exp) {
+                            selectedScreenTab = 0
+                        }
+                    }
+                )
+            } else {
+                // Total Filtered Expense Card
+                Box(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .padding(horizontal = 20.dp, vertical = 12.dp)
+                        .clip(RoundedCornerShape(20.dp))
+                        .background(ErrorCrimsonBg)
+                        .padding(18.dp)
+                ) {
                 Row(
                     modifier = Modifier.fillMaxWidth(),
                     horizontalArrangement = Arrangement.SpaceBetween,
@@ -181,6 +236,7 @@ fun ExpensesScreen(
                         Spacer(modifier = Modifier.height(80.dp))
                     }
                 }
+            }
             }
         }
     }
